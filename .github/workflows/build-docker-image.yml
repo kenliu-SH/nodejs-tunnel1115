@@ -1,14 +1,17 @@
 name: Build and Push Docker Image
 
 on:
+  # 当代码推送到 main 分支时触发
   push:
     branches: [ main ]
     paths:
       - 'Dockerfile'
       - 'index.js'
       - 'package.json'
+  # 当有人提交针对 main 分支的 Pull Request 时触发 (可选，可删除)
   pull_request:
     branches: [ main ]
+  # 允许手动触发工作流
   workflow_dispatch:
 
 jobs:
@@ -16,11 +19,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # 必须有 'packages: write' 权限才能推送到 GHCR
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------
+      # 关键修复步骤：将仓库所有者名称（可能包含大写字母）转换为小写
+      # 这是解决 "repository name must be lowercase" 错误的关键
+      # ----------------------------------------------------------------------
+      - name: Slugify owner name for GHCR
+        id: slugify
+        run: |
+          # 使用 tr 命令将所有大写字母转换为小写
+          echo "owner_lc=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -37,12 +52,15 @@ jobs:
         with:
           context: .
           push: true
+          # 跨平台构建，支持 amd64 和 arm64
           platforms: linux/amd64,linux/arm64
+          # 使用小写转换后的仓库所有者名称来构建标签
           tags: |
-            ghcr.io/${{ github.repository_owner }}/tunnelbus:9822
+            ghcr.io/${{ steps.slugify.outputs.owner_lc }}/tunnelbus:9822
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=HTTP Server
             org.opencontainers.image.licenses=MIT
+          # 使用 GitHub Actions 缓存来加速后续构建
           cache-from: type=gha
           cache-to: type=gha,mode=max
