@@ -56,7 +56,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           # 使用小写转换后的仓库所有者名称来构建标签
           tags: |
-            ghcr.io/${{ steps.slugify.outputs.owner_lc }}/tunnelbus:9822
+            ghcr.io/${{ steps.slugify.outputs.owner_lc }}/busgotunnel:9822
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=HTTP Server
